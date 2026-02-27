@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Jogo da Memória 4x3</title>
+
+<style>
+  body{font-family:Arial, sans-serif;margin:0;padding:18px;text-align:center;
+        background:linear-gradient(90deg,#ffd6a5,#fdffb6);}
+  h1{color:#ff6b6b;text-shadow:2px 2px 4px rgba(0,0,0,0.25);margin:6px 0 12px}
+  #game{display:grid;grid-template-columns:repeat(4,minmax(72px,110px));
+        gap:10px;justify-content:center;max-width:740px;margin:0 auto 18px;padding-bottom:28px}
+  .card{width:110px;height:110px;aspect-ratio:1/1;perspective:1000px;cursor:pointer}
+  .card-inner{position:relative;width:100%;height:100%;transition:transform .55s;
+             transform-style:preserve-3d}
+  .card.flipped .card-inner{transform:rotateY(180deg)}
+  .card-front,.card-back{position:absolute;width:100%;height:100%;backface-visibility:hidden;
+                        border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .card-front{background:#ccc;font-size:28px;color:rgba(0,0,0,.35);user-select:none}
+  .card-back{transform:rotateY(180deg);background:#fff}
+  .card-back img{width:90%;height:90%;object-fit:cover;border-radius:8px}
+  .card.matched .card-back{background:#8f8;box-shadow:0 0 10px #4caf50}
+  #controls{margin:10px 0}
+  button{padding:8px 14px;border-radius:8px;border:none;font-size:15px;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+  #status{margin:12px 0;font-weight:bold}
+</style>
+</head>
+<body>
+  <h1>Jogo da Memória (4×3)</h1>
+
+  <div id="controls">
+    <button id="btnStart">Começar</button>
+    <button id="btnRestart" disabled>Reiniciar</button>
+  </div>
+
+  <div id="status">Pares encontrados: 0 / 6</div>
+
+  <div id="game" aria-label="Tabuleiro do jogo"></div>
+
+<script>
+/* ---------- CONFIGURAÇÃO ---------- */
+/* 5 pares normais + 1 par especial (foto6 + foto7) = 12 cartas */
+const normalPairs = [
+  'images/foto1.jpg',
+  'images/foto2.jpg',
+  'images/foto3.jpg',
+  'images/foto4.jpg',
+  'images/foto5.jpg'
+];
+const specialPairA = 'images/foto6.jpg';
+const specialPairB = 'images/foto7.jpg';
+
+/* sons */
+const soundMatch = new Audio('sounds/acerto.mp3');    // som acerto normal
+const soundFail  = new Audio('sounds/erro.mp3');      // som erro
+const soundWin   = new Audio('sounds/parabens.mp3');  // som vitória
+const soundSpecial= new Audio('sounds/special.mp3'); // som para o par especial
+
+/* estado */
+let deck = [];
+let flipped = [];
+let matchedCount = 0; // cartas
+let pairsFound = 0;   // pares
+let lockBoard = false;
+let gameActive = false;
+
+/* elementos */
+const gameDiv = document.getElementById('game');
+const statusDiv = document.getElementById('status');
+const btnStart = document.getElementById('btnStart');
+const btnRestart = document.getElementById('btnRestart');
+
+btnStart.addEventListener('click', startGame);
+btnRestart.addEventListener('click', restartGame);
+
+function prepareAudio(){
+  // tenta "desbloquear" áudio em celulares (executa rápido e pausa)
+  [soundMatch, soundFail, soundWin, soundSpecial].forEach(a=>{
+    a.volume = 1;
+    a.currentTime = 0;
+    a.play().then(()=>{ a.pause(); a.currentTime = 0; }).catch(()=>{/* bloqueado pelo navegador até interação */});
+  });
+}
+
+function startGame(){
+  prepareAudio();
+
+  // montar deck: duplicar pares normais e adicionar A + B (par especial)
+  deck = [];
+  normalPairs.forEach(img => { deck.push(img); deck.push(img); });
+  deck.push(specialPairA);
+  deck.push(specialPairB);
+
+  shuffle(deck);
+  matchedCount = 0;
+  pairsFound = 0;
+  flipped = [];
+  lockBoard = false;
+  gameActive = true;
+  btnRestart.disabled = false;
+  renderBoard();
+  updateStatus();
+}
+
+function restartGame(){
+  startGame();
+}
+
+function renderBoard(){
+  gameDiv.innerHTML = '';
+  deck.forEach(src => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.image = src;
+
+    const inner = document.createElement('div');
+    inner.className = 'card-inner';
+
+    const front = document.createElement('div');
+    front.className = 'card-front';
+    front.textContent = '★';
+
+    const back = document.createElement('div');
+    back.className = 'card-back';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = 'carta';
+    back.appendChild(img);
+
+    inner.appendChild(front);
+    inner.appendChild(back);
+    card.appendChild(inner);
+
+    card.addEventListener('click', ()=> flipCard(card));
+    gameDiv.appendChild(card);
+  });
+}
+
+function flipCard(cardEl){
+  if (!gameActive) return;
+  if (lockBoard) return;
+  if (cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+
+  cardEl.classList.add('flipped');
+  flipped.push(cardEl);
+
+  if (flipped.length === 2){
+    lockBoard = true;
+    setTimeout(checkMatch, 550);
+  }
+}
+
+function isSpecialMatch(i1, i2){
+  return (i1 === specialPairA && i2 === specialPairB) || (i1 === specialPairB && i2 === specialPairA);
+}
+
+function checkMatch(){
+  const [c1, c2] = flipped;
+  const img1 = c1.dataset.image;
+  const img2 = c2.dataset.image;
+
+  const equal = img1 === img2;
+  const special = isSpecialMatch(img1, img2);
+
+  if (equal || special){
+    c1.classList.add('matched');
+    c2.classList.add('matched');
+    matchedCount += 2;
+    pairsFound += 1;
+
+    if (special){
+      // som do par especial
+      soundSpecial.currentTime = 0;
+      soundSpecial.play().catch(()=>{});
+    } else {
+      soundMatch.currentTime = 0;
+      soundMatch.play().catch(()=>{});
+    }
+
+    updateStatus();
+
+    if (matchedCount === deck.length){
+      finishGame();
+    }
+  } else {
+    // não bateu
+    c1.classList.remove('flipped');
+    c2.classList.remove('flipped');
+    soundFail.currentTime = 0;
+    soundFail.play().catch(()=>{});
+  }
+
+  flipped = [];
+  lockBoard = false;
+}
+
+function finishGame(){
+  gameActive = false;
+  soundWin.currentTime = 0;
+  soundWin.play().catch(()=>{});
+  setTimeout(()=> {
+    alert(`Fim de jogo! Você encontrou ${pairsFound} pares.`);
+  }, 150);
+  updateStatus();
+}
+
+function updateStatus(){
+  statusDiv.textContent = `Pares encontrados: ${pairsFound} / ${deck.length/2}`;
+}
+
+/* Fisher–Yates shuffle */
+function shuffle(array){
+  for (let i = array.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+</script>
+</body>
+</html>
