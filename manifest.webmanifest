@@ -1,0 +1,21 @@
+{
+  "name": "Jogo da Memória 4x3",
+  "short_name": "Memória 4x3",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffd6a5",
+  "theme_color": "#ff6b6b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
