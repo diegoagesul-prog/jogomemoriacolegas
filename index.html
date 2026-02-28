@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Jogo da Memória 4x3</title>
 
+<!-- ✅ PWA (IMPORTANTE) -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#ff6b6b">
+<link rel="apple-touch-icon" href="./icon-512.png">
+<link rel="icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 <style>
   body{
     font-family: Arial, sans-serif;
@@ -13,101 +21,49 @@
     text-align:center;
     background: linear-gradient(90deg,#ffd6a5,#fdffb6);
   }
-
-  h1{
-    color:#ff6b6b;
-    margin-bottom:10px;
-  }
-
-  #controls{
-    margin-bottom:15px;
-  }
-
+  h1{color:#ff6b6b;margin-bottom:10px;}
+  #controls{margin-bottom:15px;}
   button{
-    padding:10px 16px;
-    border:none;
-    border-radius:8px;
-    font-size:15px;
-    cursor:pointer;
+    padding:10px 16px;border:none;border-radius:8px;font-size:15px;cursor:pointer;
     box-shadow:0 2px 4px rgba(0,0,0,.2);
   }
+  #status{margin:10px 0;font-weight:bold;}
 
-  #status{
-    margin:10px 0;
-    font-weight:bold;
-  }
-
-  /* ===== GRID AJUSTADO ===== */
+  /* ✅ Grid responsivo (não cola no celular) */
   #game{
     display:grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 colunas fixas */
-    gap:14px; /* espaço entre cartas */
+    grid-template-columns: repeat(4, 1fr);
+    gap:14px;
     max-width:520px;
     margin:0 auto;
   }
-
   .card{
     width:100%;
-    aspect-ratio:1/1; /* quadrada */
+    aspect-ratio:1/1;
     perspective:1000px;
     cursor:pointer;
   }
-
   .card-inner{
-    position:relative;
-    width:100%;
-    height:100%;
+    position:relative;width:100%;height:100%;
     transition: transform .5s;
     transform-style:preserve-3d;
   }
-
-  .card.flipped .card-inner{
-    transform:rotateY(180deg);
-  }
-
+  .card.flipped .card-inner{ transform:rotateY(180deg); }
   .card-front, .card-back{
-    position:absolute;
-    width:100%;
-    height:100%;
+    position:absolute;width:100%;height:100%;
     border-radius:12px;
     backface-visibility:hidden;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    display:flex;align-items:center;justify-content:center;
     overflow:hidden;
   }
+  .card-front{ background:#ccc;font-size:28px;color:rgba(0,0,0,.3); }
+  .card-back{ background:#fff;transform:rotateY(180deg); }
+  .card-back img{ width:90%;height:90%;object-fit:cover;border-radius:8px; }
+  .card.matched .card-back{ background:#8f8;box-shadow:0 0 10px #4caf50; }
 
-  .card-front{
-    background:#ccc;
-    font-size:28px;
-    color:rgba(0,0,0,.3);
-  }
-
-  .card-back{
-    background:#fff;
-    transform:rotateY(180deg);
-  }
-
-  .card-back img{
-    width:90%;
-    height:90%;
-    object-fit:cover;
-    border-radius:8px;
-  }
-
-  .card.matched .card-back{
-    background:#8f8;
-    box-shadow:0 0 10px #4caf50;
-  }
-
-  /* ===== AJUSTE EXTRA PARA CELULAR ===== */
   @media (max-width:420px){
-    #game{
-      gap:12px;
-      max-width:360px;
-    }
+    #game{ gap:12px; max-width:360px; }
   }
-
 </style>
 </head>
 <body>
@@ -120,13 +76,10 @@
 </div>
 
 <div id="status">Pares encontrados: 0 / 6</div>
-
 <div id="game"></div>
 
 <script>
-
 /* ===== CONFIGURAÇÃO ===== */
-
 const normalPairs = [
   'images/foto1.jpg',
   'images/foto2.jpg',
@@ -134,7 +87,6 @@ const normalPairs = [
   'images/foto4.jpg',
   'images/foto5.jpg'
 ];
-
 const specialPairA = 'images/foto6.jpg';
 const specialPairB = 'images/foto7.jpg';
 
@@ -151,15 +103,19 @@ let pairsFound = 0;
 let lockBoard = false;
 let gameActive = false;
 
+function prepareAudio(){
+  [soundMatch, soundFail, soundWin, soundSpecial].forEach(a=>{
+    a.volume = 1;
+    a.currentTime = 0;
+    a.play().then(()=>{ a.pause(); a.currentTime = 0; }).catch(()=>{});
+  });
+}
+
 function startGame(){
+  prepareAudio();
 
   deck = [];
-
-  normalPairs.forEach(img=>{
-    deck.push(img);
-    deck.push(img);
-  });
-
+  normalPairs.forEach(img=>{ deck.push(img); deck.push(img); });
   deck.push(specialPairA);
   deck.push(specialPairB);
 
@@ -175,9 +131,7 @@ function startGame(){
   updateStatus();
 }
 
-function restartGame(){
-  startGame();
-}
+function restartGame(){ startGame(); }
 
 function renderBoard(){
   const gameDiv = document.getElementById('game');
@@ -200,6 +154,7 @@ function renderBoard(){
 
     const img = document.createElement('img');
     img.src = src;
+    img.alt = 'carta';
 
     back.appendChild(img);
     inner.appendChild(front);
@@ -212,7 +167,6 @@ function renderBoard(){
 }
 
 function flipCard(card){
-
   if(!gameActive) return;
   if(lockBoard) return;
   if(card.classList.contains('flipped') || card.classList.contains('matched')) return;
@@ -227,12 +181,10 @@ function flipCard(card){
 }
 
 function isSpecialMatch(a,b){
-  return (a===specialPairA && b===specialPairB) ||
-         (a===specialPairB && b===specialPairA);
+  return (a===specialPairA && b===specialPairB) || (a===specialPairB && b===specialPairA);
 }
 
 function checkMatch(){
-
   const [c1,c2] = flipped;
   const img1 = c1.dataset.image;
   const img2 = c2.dataset.image;
@@ -241,7 +193,6 @@ function checkMatch(){
   const specialMatch = isSpecialMatch(img1,img2);
 
   if(normalMatch || specialMatch){
-
     c1.classList.add('matched');
     c2.classList.add('matched');
 
@@ -249,18 +200,20 @@ function checkMatch(){
     pairsFound++;
 
     if(specialMatch){
+      soundSpecial.currentTime = 0;
       soundSpecial.play().catch(()=>{});
     } else {
+      soundMatch.currentTime = 0;
       soundMatch.play().catch(()=>{});
     }
 
     if(matchedCount === deck.length){
       finishGame();
     }
-
   } else {
     c1.classList.remove('flipped');
     c2.classList.remove('flipped');
+    soundFail.currentTime = 0;
     soundFail.play().catch(()=>{});
   }
 
@@ -271,10 +224,9 @@ function checkMatch(){
 
 function finishGame(){
   gameActive = false;
+  soundWin.currentTime = 0;
   soundWin.play().catch(()=>{});
-  setTimeout(()=>{
-    alert("Parabéns! Você completou o jogo!");
-  },200);
+  setTimeout(()=> alert("Parabéns! Você completou o jogo!"), 200);
 }
 
 function updateStatus(){
@@ -288,8 +240,9 @@ function shuffle(array){
     [array[i],array[j]]=[array[j],array[i]];
   }
 }
-
 </script>
 
+<!-- ✅ Registrar Service Worker -->
+<script src="./pwa.js"></script>
 </body>
 </html>
