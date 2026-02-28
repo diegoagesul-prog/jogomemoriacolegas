@@ -1,11 +1,10 @@
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(function(registration) {
-        console.log('Service Worker registrado com sucesso:', registration.scope);
-      })
-      .catch(function(error) {
-        console.log('Erro ao registrar Service Worker:', error);
-      });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("./service-worker.js", { scope: "./" });
+      console.log("SW registrado:", reg.scope);
+    } catch (e) {
+      console.log("Falha ao registrar SW:", e);
+    }
   });
 }
